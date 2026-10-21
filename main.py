@@ -11,6 +11,7 @@ from keyboard import inline_keyboard
 from aiogram.fsm.context import FSMContext
 from states import Form 
 from db import init_db, save_birthday, get_birthdays, get_tomorrow
+from aiohttp import web
 
 from urllib.parse import quote
 from dotenv import load_dotenv
@@ -20,7 +21,7 @@ BOT_TOKEN =os.getenv('BOT_TOKEN')
 WEATHER_API_KEY = os.getenv('WEATHER_API_KEY')
 
 WIDTH = 1024
-HEIGHT = 1024
+HEIGHT = 1024   
 
 bot = Bot(token=BOT_TOKEN)
 
@@ -30,6 +31,10 @@ dp = Dispatcher()
 async def start(message: Message):
     await message.answer(f"Привет {message.from_user.username}! Я твой первый бот на aiogram 3.0!")
     
+        
+async def health(request):
+    return web.Response(text="OK")
+
     
 @dp.message(F.photo)
 async def photo_handler(message: Message):
@@ -102,15 +107,6 @@ async def draw_command(message: Message, command: CommandObject):
     finally:
         await status.delete()
     
-        
-
-async def main():
-    await dp.start_polling(bot)
-    
-if __name__ == "__main__":
-    asyncio.run(main())
-    
-
 
 @dp.message(Command('add'))
 async def add_birthday(message: Message, command: CommandObject):
@@ -135,7 +131,22 @@ async def remind_birthdays():
 
 
 
+async def start_web():
+    app = web.Application()
+    app.router.add_get("/", health) 
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.getenv("PORT", 10000))  
+    await web.TCPSite(runner, "0.0.0.0", port).start()
+
+
 async def main():
     await init_db()
     task =asyncio.create_task(remind_birthdays())
+    await start_web()
     await dp.start_polling(bot)
+
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
